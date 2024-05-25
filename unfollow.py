@@ -5,13 +5,20 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import time
+import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+username = os.getenv('INSTAGRAM_USERNAME')
+password = os.getenv('INSTAGRAM_PASSWORD')
+print("user:",username)
 
 # Create an instance of Instaloader
 L = instaloader.Instaloader()
 
 # Login to Instagram
-username = 'user'
-password = 'pwd'
 L.login(username, password)
 
 os.system('say "Login complete"')  # Uses the say command on Mac
@@ -21,26 +28,53 @@ profile = instaloader.Profile.from_username(L.context, username)
 
 os.system('say "Profile complete"')  # Uses the say command on Mac
 
-# Get the list of followers and following
-followers = {follower.username for follower in profile.get_followers()}
-os.system('say "followers complete"')  # Uses the say command on Mac
+# Load followers and following from storage if available
+followers_file = 'followers.json'
+following_file = 'following.json'
+non_followers_file='non_followers.json'
 
-following = {followee.username for followee in profile.get_followees()}
-os.system('say "following complete"')  # Uses the say command on Mac
+if os.path.exists(followers_file) and os.path.exists(following_file):
+    with open(followers_file, 'r') as f:
+        followers = set(json.load(f))
+    with open(following_file, 'r') as f:
+        following = set(json.load(f))
+else:
+    # Get the list of followers and following
+    followers = {follower.username for follower in profile.get_followers()}
+    with open(followers_file, 'w') as f:
+        json.dump(list(followers), f)
+    os.system('say "followers complete"')  # Uses the say command on Mac
+
+    following = {followee.username for followee in profile.get_followees()}
+    with open(following_file, 'w') as f:
+        json.dump(list(following), f)
+    os.system('say "following complete"')  # Uses the say command on Mac
 
 # Find out who you are following that doesn't follow you back
 non_followers = following - followers
-
+with open(non_followers_file, 'w') as f:
+    json.dump(list(non_followers), f)
 os.system('say "non_followers complete"')  # Uses the say command on Mac
 
-# Filter out private accounts using Instaloader
-public_non_followers = []
-for user in non_followers:
-    user_profile = instaloader.Profile.from_username(L.context, user)
-    if not user_profile.is_private:
-        public_non_followers.append(user)
+# Load public non-followers from storage if available
+# public_non_followers_file = 'public_non_followers.json'
 
-os.system('say "private account filter complete"')  # Uses the say command on Mac
+# if os.path.exists(public_non_followers_file):
+#     with open(public_non_followers_file, 'r') as f:
+#         public_non_followers = json.load(f)
+# else:
+#     # Filter out private accounts using Instaloader
+#     public_non_followers = []
+#     for user in non_followers:
+#         user_profile = instaloader.Profile.from_username(L.context, user)
+#         if not user_profile.is_private:
+#             public_non_followers.append(user)
+#     with open(public_non_followers_file, 'w') as f:
+#         json.dump(public_non_followers, f)
+#     os.system('say "private account filter complete"')  # Uses the say command on Mac
+
+# If you wish to avoid checking whether the non-followers are private profiles.
+public_non_followers=non_followers 
 
 # Create a timestamped filename for the report
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -90,13 +124,15 @@ with open(report_filename, "w") as report_file:
                 'return document.querySelectorAll("button")[0];'
             )
             if following_button:
-                following_button.click()
-                time.sleep(1)
-                # Find and click the "Unfollow" button by specific style
-                unfollow_span = driver.find_element(By.XPATH, '//span[text()="Unfollow"]')
-                unfollow_span.click()
-                print(f"Unfollowed {user}")
-                report_file.write(f"Unfollowed {user}\n")
+                button_text = following_button.find_element(By.XPATH, './*[1]/*[1]').text
+                if button_text == "Following":
+                    following_button.click()
+                    time.sleep(1)
+                    # Find and click the "Unfollow" button by specific style
+                    unfollow_span = driver.find_element(By.XPATH, '//span[text()="Unfollow"]')
+                    unfollow_span.click()
+                    print(f"Unfollowed {user}")
+                    report_file.write(f"Unfollowed {user}\n")
             else:
                 print(f"Failed to find unfollow button for {user}")
                 report_file.write(f"Failed to find unfollow button for {user}\n")
