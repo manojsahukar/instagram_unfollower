@@ -42,18 +42,18 @@ else:
     # Get the list of followers and following
     followers = {follower.username for follower in profile.get_followers()}
     with open(followers_file, 'w') as f:
-        json.dump(list(followers), f)
+        json.dump(list(sorted(followers)), f)
     os.system('say "followers complete"')  # Uses the say command on Mac
 
     following = {followee.username for followee in profile.get_followees()}
     with open(following_file, 'w') as f:
-        json.dump(list(following), f)
+        json.dump(list(sorted(following)), f)
     os.system('say "following complete"')  # Uses the say command on Mac
 
 # Find out who you are following that doesn't follow you back
 non_followers = following - followers
 with open(non_followers_file, 'w') as f:
-    json.dump(list(non_followers), f)
+    json.dump(list(sorted(non_followers)), f)
 os.system('say "non_followers complete"')  # Uses the say command on Mac
 
 # Load public non-followers from storage if available
@@ -70,7 +70,7 @@ os.system('say "non_followers complete"')  # Uses the say command on Mac
 #         if not user_profile.is_private:
 #             public_non_followers.append(user)
 #     with open(public_non_followers_file, 'w') as f:
-#         json.dump(public_non_followers, f)
+#         json.dump(sorted(public_non_followers), f)
 #     os.system('say "private account filter complete"')  # Uses the say command on Mac
 
 # If you wish to avoid checking whether the non-followers are private profiles.
@@ -114,7 +114,7 @@ with open(report_filename, "w") as report_file:
     time.sleep(5)  # Wait for login to complete
 
     # Unfollow those who don't follow you back and are not private accounts
-    for user in sorted(public_non_followers):
+    for user in sorted(public_non_followers, reverse=True):
         driver.get(f'https://www.instagram.com/{user}/')
         time.sleep(2)
 
@@ -131,15 +131,18 @@ with open(report_filename, "w") as report_file:
                     # Find and click the "Unfollow" button by specific style
                     unfollow_span = driver.find_element(By.XPATH, '//span[text()="Unfollow"]')
                     unfollow_span.click()
-                    print(f"Unfollowed {user}")
-                    report_file.write(f"Unfollowed {user}\n")
-            else:
-                print(f"Failed to find unfollow button for {user}")
-                report_file.write(f"Failed to find unfollow button for {user}\n")
+                    time.sleep(1)
+                    button_text = following_button.find_element(By.XPATH, './*[1]/*[1]').text
+                    if button_text == "Follow":
+                        print(f"Unfollowed {user}")
+                        report_file.write(f"{user}\n")
+                    else:
+                        print(f"Failed to unfollow {user}")
+                        report_file.write(f"Failed to unfollow {user}\n")
+                        os.system(f'say "Failed to unfollow {user}"')  # Uses the say command on Mac
         except Exception as e:
             print(f"Failed to unfollow {user}: {e}")
             report_file.write(f"Failed to unfollow {user}: {e}\n")
-
     driver.quit()
     os.system('say "unfollow action complete"')  # Uses the say command on Mac
 
