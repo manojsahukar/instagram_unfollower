@@ -29,9 +29,9 @@ profile = instaloader.Profile.from_username(L.context, username)
 os.system('say "Profile complete"')  # Uses the say command on Mac
 
 # Load followers and following from storage if available
-followers_file = 'followers.json'
-following_file = 'following.json'
-non_followers_file='non_followers.json'
+followers_file = f'{username}_followers.json'
+following_file = f'{username}_following.json'
+non_followers_file= f'{username}_non_followers.json'
 
 if os.path.exists(followers_file) and os.path.exists(following_file):
     with open(followers_file, 'r') as f:
@@ -78,7 +78,7 @@ public_non_followers=non_followers
 
 # Create a timestamped filename for the report
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-report_filename = f"unfollowed_users_report_{timestamp}.txt"
+report_filename = f"{username}_report_{timestamp}.txt"
 
 # Open a file to write the report
 with open(report_filename, "w") as report_file:
